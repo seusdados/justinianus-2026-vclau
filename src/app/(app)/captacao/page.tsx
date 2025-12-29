@@ -1,303 +1,178 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { 
-  Plus, 
-  Upload, 
-  Mail, 
-  Filter, 
-  RefreshCw,
-  Sparkles,
-  Clock,
-  AlertTriangle,
-  X,
-  Loader2
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { SearchInput } from '@/components/ui/input'
-import { Badge, UrgenciaBadge } from '@/components/ui/badge'
-import { InboxCard, DocumentoInboxCard, InboxStats } from '@/components/fluxo/inbox-card'
-import { LeadForm } from '@/components/formularios/lead-form'
-import { useLeads, useDocumentos } from '@/hooks'
-import type { Lead, Documento } from '@/types'
+import { useState } from 'react'
+import Link from 'next/link'
 
-// tipos para qualificação IA (será substituído quando implementar)
-type QualificacaoIA = {
-  nivelRisco: 'baixo' | 'medio' | 'alto' | 'critico'
-  confianca: number
+const leadsDemo = [
+  { id: '1', nome: 'Maria Silva', email: 'maria@email.com', tipo: 'Trabalhista', urgencia: 'alta', status: 'novo', data: '29/12/2024' },
+  { id: '2', nome: 'João Santos', email: 'joao@empresa.com', tipo: 'Cível', urgencia: 'media', status: 'em_analise', data: '28/12/2024' },
+  { id: '3', nome: 'Empresa ABC Ltda', email: 'juridico@abc.com', tipo: 'Tributário', urgencia: 'baixa', status: 'qualificado', data: '27/12/2024' },
+  { id: '4', nome: 'Ana Oliveira', email: 'ana@gmail.com', tipo: 'Família', urgencia: 'critica', status: 'novo', data: '29/12/2024' },
+  { id: '5', nome: 'Tech Solutions SA', email: 'legal@tech.com', tipo: 'Empresarial', urgencia: 'media', status: 'em_analise', data: '26/12/2024' },
+]
+
+const statusColors: Record<string, string> = {
+  novo: 'bg-blue-100 text-blue-700',
+  em_analise: 'bg-yellow-100 text-yellow-700',
+  qualificado: 'bg-green-100 text-green-700',
+  recusado: 'bg-red-100 text-red-700',
+}
+
+const urgenciaColors: Record<string, string> = {
+  baixa: 'bg-gray-100 text-gray-600',
+  media: 'bg-yellow-100 text-yellow-700',
+  alta: 'bg-orange-100 text-orange-700',
+  critica: 'bg-red-100 text-red-700',
 }
 
 export default function CaptacaoPage() {
-  const [filtroStatus, setFiltroStatus] = useState<string>('todos')
-  const [busca, setBusca] = useState('')
-  const [abaAtiva, setAbaAtiva] = useState<'leads' | 'documentos'>('leads')
-  const [showNovoLead, setShowNovoLead] = useState(false)
-  const [showFiltros, setShowFiltros] = useState(false)
+  const [filtro, setFiltro] = useState('todos')
+  const [showModal, setShowModal] = useState(false)
 
-  // hooks de dados
-  const { 
-    leads, 
-    loading: loadingLeads, 
-    error: errorLeads,
-    refetch: refetchLeads,
-    criar: criarLead,
-    atualizar: atualizarLead
-  } = useLeads()
-
-  const {
-    documentos,
-    loading: loadingDocs,
-    refetch: refetchDocumentos
-  } = useDocumentos({ casoId: undefined })
-
-  // buscar dados ao montar
-  useEffect(() => {
-    refetchLeads()
-    refetchDocumentos()
-  }, [refetchLeads, refetchDocumentos])
-
-  // filtrar leads
-  const leadsFiltrados = leads.filter(lead => {
-    if (filtroStatus !== 'todos' && lead.status !== filtroStatus) return false
-    if (busca && !lead.nome.toLowerCase().includes(busca.toLowerCase())) return false
-    return true
-  })
-
-  // estatísticas
-  const stats = {
-    novos: leads.filter(l => l.status === 'novo').length,
-    emAnalise: leads.filter(l => l.status === 'em_analise').length,
-    qualificados: leads.filter(l => l.status === 'qualificado').length,
-    urgentes: leads.filter(l => l.nivel_urgencia === 'alta' || l.nivel_urgencia === 'critica').length,
-  }
-
-  // contar documentos por lead
-  const contarDocumentosPorLead = (leadId: string) => {
-    return documentos.filter(d => d.lead_id === leadId).length
-  }
-
-  // callback para criar lead
-  const handleCriarLead = async (dados: Partial<Lead>) => {
-    await criarLead(dados as any)
-    setShowNovoLead(false)
-  }
-
-  // callback para atualizar
-  const handleRefresh = async () => {
-    await refetchLeads()
-    await refetchDocumentos()
-  }
-
-  const loading = loadingLeads || loadingDocs
+  const leadsFiltrados = filtro === 'todos' 
+    ? leadsDemo 
+    : leadsDemo.filter(l => l.status === filtro)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* header da página */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extralight tracking-tight">captação</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            inbox de leads, documentos e solicitações
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            atualizar
-          </Button>
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            upload
-          </Button>
-          <Button size="sm" onClick={() => setShowNovoLead(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            novo lead
-          </Button>
-        </div>
-      </div>
-
-      {/* modal de novo lead */}
-      {showNovoLead && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-normal">novo lead</h2>
-              <button
-                onClick={() => setShowNovoLead(false)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="text-gray-500 hover:text-gray-700">← Voltar</Link>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">📥 Captação</h1>
+                <p className="text-sm text-gray-500">Inbox de leads e documentos</p>
+              </div>
             </div>
-            <div className="p-4">
-              <LeadForm
-                organizacaoId="org_placeholder"
-                onSucesso={handleCriarLead as any}
-                onCancelar={() => setShowNovoLead(false)}
-              />
-            </div>
+            <button 
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            >
+              + Novo Lead
+            </button>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* estatísticas */}
-      <InboxStats {...stats} />
-
-      {/* tabs e filtros */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg">
-          <button
-            onClick={() => setAbaAtiva('leads')}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
-              abaAtiva === 'leads' 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            leads ({leads.length})
-          </button>
-          <button
-            onClick={() => setAbaAtiva('documentos')}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
-              abaAtiva === 'documentos' 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            documentos ({documentos.length})
-          </button>
+      <main className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-blue-600">{leadsDemo.filter(l => l.status === 'novo').length}</div>
+            <div className="text-sm text-gray-500">Novos</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-yellow-600">{leadsDemo.filter(l => l.status === 'em_analise').length}</div>
+            <div className="text-sm text-gray-500">Em Análise</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-green-600">{leadsDemo.filter(l => l.status === 'qualificado').length}</div>
+            <div className="text-sm text-gray-500">Qualificados</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-red-600">{leadsDemo.filter(l => l.urgencia === 'critica' || l.urgencia === 'alta').length}</div>
+            <div className="text-sm text-gray-500">Urgentes</div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <SearchInput
-            placeholder="buscar..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-64"
-          />
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            filtros
-          </Button>
-        </div>
-      </div>
-
-      {/* filtros de status */}
-      {abaAtiva === 'leads' && (
-        <div className="flex items-center gap-2">
-          {[
-            { value: 'todos', label: 'todos' },
-            { value: 'novo', label: 'novos' },
-            { value: 'em_analise', label: 'em análise' },
-            { value: 'qualificado', label: 'qualificados' },
-          ].map(({ value, label }) => (
+        {/* Filtros */}
+        <div className="flex gap-2 mb-6">
+          {['todos', 'novo', 'em_analise', 'qualificado'].map(f => (
             <button
-              key={value}
-              onClick={() => setFiltroStatus(value)}
-              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                filtroStatus === value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+              key={f}
+              onClick={() => setFiltro(f)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                filtro === f 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {label}
+              {f === 'todos' ? 'Todos' : f === 'em_analise' ? 'Em Análise' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
-      )}
 
-      {/* lista de leads ou documentos */}
-      <div className="grid gap-4">
-        {loading ? (
-          <Card variant="outline" className="p-12">
-            <div className="flex flex-col items-center text-center">
-              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-4" />
-              <p className="text-muted-foreground text-sm">carregando...</p>
+        {/* Lista de Leads */}
+        <div className="space-y-3">
+          {leadsFiltrados.map(lead => (
+            <div key={lead.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-semibold text-gray-900">{lead.nome}</h3>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[lead.status]}`}>
+                      {lead.status === 'em_analise' ? 'Em Análise' : lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${urgenciaColors[lead.urgencia]}`}>
+                      {lead.urgencia.charAt(0).toUpperCase() + lead.urgencia.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span>{lead.email}</span>
+                    <span>•</span>
+                    <span>{lead.tipo}</span>
+                    <span>•</span>
+                    <span>{lead.data}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Link 
+                    href={`/qualificacao?lead=${lead.id}`}
+                    className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition"
+                  >
+                    Qualificar
+                  </Link>
+                  <button className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                    Ver Detalhes
+                  </button>
+                </div>
+              </div>
             </div>
-          </Card>
-        ) : abaAtiva === 'leads' ? (
-          leadsFiltrados.length > 0 ? (
-            leadsFiltrados.map(lead => (
-              <InboxCard
-                key={lead.id}
-                lead={lead as any}
-                onQualificar={() => {
-                  window.location.href = `/qualificacao?lead=${lead.id}`
-                }}
-              />
-            ))
-          ) : (
-            <Card variant="outline" className="p-12">
-              <div className="flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                  <Mail className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-normal mb-2">nenhum lead encontrado</h3>
-                <p className="text-muted-foreground text-sm max-w-md">
-                  não há leads correspondentes aos filtros selecionados. 
-                  tente ajustar os filtros ou aguarde novos leads.
-                </p>
-              </div>
-            </Card>
-          )
-        ) : (
-          documentos.length > 0 ? (
-            documentos.map(doc => (
-              <DocumentoInboxCard
-                key={doc.id}
-                documento={doc as any}
-                onClick={() => console.log('Ver documento:', doc.id)}
-              />
-            ))
-          ) : (
-            <Card variant="outline" className="p-12">
-              <div className="flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                  <Mail className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-normal mb-2">nenhum documento encontrado</h3>
-                <p className="text-muted-foreground text-sm max-w-md">
-                  não há documentos disponíveis no momento.
-                </p>
-              </div>
-            </Card>
-          )
-        )}
-      </div>
+          ))}
+        </div>
+      </main>
 
-      {/* alerta de itens urgentes */}
-      {stats.urgentes > 0 && (
-        <Card variant="outline" className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
+      {/* Modal Novo Lead */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Novo Lead</h2>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
               </div>
-              <div className="flex-1">
-                <h4 className="font-normal text-amber-500">
-                  {stats.urgentes} {stats.urgentes === 1 ? 'lead urgente' : 'leads urgentes'}
-                </h4>
-                <p className="text-sm text-muted-foreground">
-                  existem leads com alta urgência aguardando qualificação
-                </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
               </div>
-              <Button variant="outline" size="sm" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
-                ver urgentes
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Serviço</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <option>Trabalhista</option>
+                  <option>Cível</option>
+                  <option>Tributário</option>
+                  <option>Família</option>
+                  <option>Empresarial</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                  Cancelar
+                </button>
+                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  Criar Lead
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
