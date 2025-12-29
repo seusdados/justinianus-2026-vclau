@@ -1,435 +1,160 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { 
-  Search,
-  Plus,
-  MoreHorizontal,
-  ArrowUpDown,
-  Scale,
-  Building2,
-  User,
-  Clock,
-  Calendar,
-  Target,
-  CheckCircle2,
-  Pause,
-  Loader2,
-  RefreshCw,
-  X,
-  FileText,
-  AlertTriangle
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge, FaseBadge } from '@/components/ui/badge'
-import { SearchInput } from '@/components/ui/input'
-import { CasoForm } from '@/components/formularios/caso-form'
-import { useCasos, useCasosCounters } from '@/hooks'
-import type { Caso } from '@/types'
-import { formatarData, formatarMoeda } from '@/lib/utils'
+import { useState } from 'react'
+import Link from 'next/link'
 
-// Mapa de responsáveis (em produção virá do banco)
-const responsaveisMap: Record<string, string> = {
-  'user-1': 'Dr. Marcelo Fattori',
-  'user-2': 'Dra. Ana Paula Silva',
-  'user-3': 'Dr. Carlos Eduardo',
+const casos = [
+  { id: 1, titulo: 'Maria Silva vs TechCorp', numero: '1234567-89.2024.8.26.0100', tipo: 'Trabalhista', status: 'ativo', fase: 'analise', valor: 350000, cliente: 'Maria Silva', responsavel: 'Dr. Carlos' },
+  { id: 2, titulo: 'João Santos - Indenização', numero: '9876543-21.2024.8.26.0050', tipo: 'Cível', status: 'ativo', fase: 'acao', valor: 150000, cliente: 'João Santos', responsavel: 'Dra. Ana' },
+  { id: 3, titulo: 'Empresa ABC - Tributário', numero: '5555555-00.2024.8.26.0001', tipo: 'Tributário', status: 'suspenso', fase: 'registro', valor: 2500000, cliente: 'Empresa ABC', responsavel: 'Dr. Pedro' },
+  { id: 4, titulo: 'Ana Oliveira - Guarda', numero: '1111111-11.2024.8.26.0100', tipo: 'Família', status: 'ativo', fase: 'qualificacao', valor: 0, cliente: 'Ana Oliveira', responsavel: 'Dra. Julia' },
+]
+
+const statusColors: Record<string, string> = {
+  ativo: 'bg-green-100 text-green-700',
+  suspenso: 'bg-yellow-100 text-yellow-700',
+  encerrado: 'bg-gray-100 text-gray-600',
+}
+
+const faseColors: Record<string, string> = {
+  captacao: 'bg-blue-100 text-blue-700',
+  qualificacao: 'bg-purple-100 text-purple-700',
+  analise: 'bg-cyan-100 text-cyan-700',
+  acao: 'bg-amber-100 text-amber-700',
+  registro: 'bg-emerald-100 text-emerald-700',
 }
 
 export default function CasosPage() {
-  const [filtroStatus, setFiltroStatus] = useState<string>('todos')
-  const [filtroTipo, setFiltroTipo] = useState<string>('todos')
+  const [filtroStatus, setFiltroStatus] = useState('todos')
   const [busca, setBusca] = useState('')
-  const [ordenacao, setOrdenacao] = useState<'recentes' | 'antigos' | 'valor'>('recentes')
-  const [showNovoCaso, setShowNovoCaso] = useState(false)
 
-  // Hooks de dados
-  const { 
-    casos, 
-    loading, 
-    criar,
-    refetch
-  } = useCasos()
-  
-  const { counters } = useCasosCounters()
-
-  // Filtrar e ordenar casos
-  const casosFiltrados = useMemo(() => {
-    return casos.filter((caso: any) => {
-      if (filtroStatus !== 'todos' && caso.status_caso !== filtroStatus) return false
-      if (filtroTipo !== 'todos' && caso.tipo_caso !== filtroTipo) return false
-      if (busca) {
-        const termos = [caso.titulo, caso.numero_interno, caso.numero_externo].join(' ').toLowerCase()
-        if (!termos.includes(busca.toLowerCase())) return false
-      }
-      return true
-    }).sort((a: any, b: any) => {
-      if (ordenacao === 'recentes') return new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
-      if (ordenacao === 'antigos') return new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime()
-      if (ordenacao === 'valor') return (b.valor_causa || 0) - (a.valor_causa || 0)
-      return 0
-    })
-  }, [casos, filtroStatus, filtroTipo, busca, ordenacao])
-
-  // Estatísticas
-  const stats = useMemo(() => ({
-    ativos: counters?.ativo || casos.filter((c: any) => c.status_caso === 'ativo').length,
-    suspensos: counters?.suspenso || casos.filter((c: any) => c.status_caso === 'suspenso').length,
-    encerrados: counters?.encerrado || casos.filter((c: any) => c.status_caso === 'encerrado').length,
-    valorTotal: counters?.valorTotal || casos.reduce((acc, c: any) => acc + (c.valor_causa || 0), 0),
-  }), [casos, counters])
-
-  // Handlers
-  const handleCriarCaso = async (dados: Partial<Caso>) => {
-    await criar(dados as any)
-    setShowNovoCaso(false)
-    await refetch()
-  }
-
-  const handleRefresh = useCallback(async () => {
-    await refetch()
-  }, [refetch])
-
-  const getIconeTipo = (tipo: string) => {
-    switch (tipo) {
-      case 'contencioso': return <Scale className="h-4 w-4" />
-      case 'consultivo': return <Target className="h-4 w-4" />
-      case 'administrativo': return <Building2 className="h-4 w-4" />
-      case 'consensual': return <User className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
-    }
-  }
-
-  const getCorStatus = (status: string) => {
-    switch (status) {
-      case 'ativo': return 'bg-green-500/20 text-green-500'
-      case 'suspenso': return 'bg-amber-500/20 text-amber-500'
-      case 'encerrado': return 'bg-muted text-muted-foreground'
-      default: return 'bg-muted text-muted-foreground'
-    }
-  }
+  const casosFiltrados = casos.filter(c => {
+    if (filtroStatus !== 'todos' && c.status !== filtroStatus) return false
+    if (busca && !c.titulo.toLowerCase().includes(busca.toLowerCase()) && !c.numero.includes(busca)) return false
+    return true
+  })
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-light">casos</h1>
-          <p className="text-muted-foreground">gerencie todos os casos do escritório</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            atualizar
-          </Button>
-          <Button size="sm" onClick={() => setShowNovoCaso(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            novo caso
-          </Button>
-        </div>
-      </div>
-
-      {/* modal novo caso */}
-      {showNovoCaso && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-normal">novo caso</h2>
-              <button
-                onClick={() => setShowNovoCaso(false)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="p-4">
-              <CasoForm
-                organizacaoId="org_temp"
-                onSucesso={handleCriarCaso as any}
-                onCancelar={() => setShowNovoCaso(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* loading state */}
-      {loading && casos.length === 0 && (
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">carregando casos...</p>
-        </div>
-      )}
-
-      {/* content */}
-      {(!loading || casos.length > 0) && (
-        <>
-          {/* stats */}
-          <div className="grid grid-cols-4 gap-4">
-            <Card 
-              className={`cursor-pointer hover:bg-muted/30 transition-colors ${filtroStatus === 'ativo' ? 'ring-2 ring-primary' : ''}`} 
-              onClick={() => setFiltroStatus(filtroStatus === 'ativo' ? 'todos' : 'ativo')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">ativos</span>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-3xl font-light">{stats.ativos}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card 
-              className={`cursor-pointer hover:bg-muted/30 transition-colors ${filtroStatus === 'suspenso' ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => setFiltroStatus(filtroStatus === 'suspenso' ? 'todos' : 'suspenso')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">suspensos</span>
-                  <Pause className="h-4 w-4 text-amber-500" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-3xl font-light">{stats.suspensos}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card 
-              className={`cursor-pointer hover:bg-muted/30 transition-colors ${filtroStatus === 'encerrado' ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => setFiltroStatus(filtroStatus === 'encerrado' ? 'todos' : 'encerrado')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">encerrados</span>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-3xl font-light">{stats.encerrados}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">valor total em casos</span>
-                  <Target className="h-4 w-4 text-primary" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-2xl font-light">{formatarMoeda(stats.valorTotal)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* filtros */}
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* filtro de status */}
-              <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg">
-                {[
-                  { value: 'todos', label: 'todos' },
-                  { value: 'ativo', label: 'ativos' },
-                  { value: 'suspenso', label: 'suspensos' },
-                  { value: 'encerrado', label: 'encerrados' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setFiltroStatus(value)}
-                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                      filtroStatus === value
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* filtro de tipo */}
-              <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg">
-                {[
-                  { value: 'todos', label: 'todos' },
-                  { value: 'contencioso', label: 'contencioso' },
-                  { value: 'consultivo', label: 'consultivo' },
-                  { value: 'administrativo', label: 'administrativo' },
-                  { value: 'consensual', label: 'consensual' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setFiltroTipo(value)}
-                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                      filtroTipo === value
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <Link href="/" className="text-gray-500 hover:text-gray-700">← Voltar</Link>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">📁 Casos</h1>
+                <p className="text-sm text-gray-500">Gestão de processos e casos</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <SearchInput
-                placeholder="buscar caso..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="w-64"
-              />
-              <Button variant="outline" size="sm" onClick={() => {
-                setOrdenacao(o => o === 'recentes' ? 'antigos' : o === 'antigos' ? 'valor' : 'recentes')
-              }}>
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                {ordenacao === 'recentes' ? 'mais recentes' : ordenacao === 'antigos' ? 'mais antigos' : 'maior valor'}
-              </Button>
-            </div>
+            <Link 
+              href="/captacao"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+              + Novo Caso
+            </Link>
           </div>
+        </div>
+      </header>
 
-          {/* lista de casos */}
-          <div className="space-y-3">
-            {casosFiltrados.length > 0 ? (
-              casosFiltrados.map((caso: any) => (
-                <Card 
-                  key={caso.id} 
-                  className="hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => window.location.href = `/analise?caso=${caso.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {/* ícone do tipo */}
-                        <div className="h-10 w-10 rounded-lg bg-muted/50 flex items-center justify-center">
-                          {getIconeTipo(caso.tipo_caso)}
-                        </div>
+      <main className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-blue-600">{casos.length}</div>
+            <div className="text-sm text-gray-500">Total de Casos</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-green-600">{casos.filter(c => c.status === 'ativo').length}</div>
+            <div className="text-sm text-gray-500">Casos Ativos</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-yellow-600">{casos.filter(c => c.status === 'suspenso').length}</div>
+            <div className="text-sm text-gray-500">Suspensos</div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="text-2xl font-bold text-gray-600">R$ {(casos.reduce((a, c) => a + c.valor, 0) / 1000000).toFixed(1)}M</div>
+            <div className="text-sm text-gray-500">Valor Total</div>
+          </div>
+        </div>
 
-                        {/* info principal */}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-normal">{caso.titulo}</h3>
-                            <Badge variant="secondary" className="text-xs">
-                              {caso.numero_interno}
-                            </Badge>
-                            {caso.numero_externo && (
-                              <Badge variant="outline" className="text-xs">
-                                {caso.numero_externo}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {responsaveisMap[caso.usuario_responsavel_id || ''] || 'Não atribuído'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatarData(caso.aberto_em, 'curta')}
-                            </span>
-                            {caso.tribunal && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="h-3 w-3" />
-                                {caso.tribunal}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+        {/* Filtros e Busca */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex gap-2">
+            {['todos', 'ativo', 'suspenso', 'encerrado'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFiltroStatus(f)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  filtroStatus === f 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar por título ou número..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            className="w-64 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
 
-                      {/* info direita */}
-                      <div className="flex items-center gap-4">
-                        {/* fase */}
-                        {caso.fase_atual && (
-                          <FaseBadge fase={caso.fase_atual} />
-                        )}
-
-                        {/* valor */}
-                        {caso.valor_causa && caso.valor_causa > 0 && (
-                          <span className="text-sm text-muted-foreground">
-                            {formatarMoeda(caso.valor_causa)}
-                          </span>
-                        )}
-
-                        {/* status */}
-                        <span className={`px-2 py-1 rounded-full text-xs ${getCorStatus(caso.status_caso)}`}>
-                          {caso.status_caso}
-                        </span>
-
-                        {/* ações */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // TODO: menu de ações
-                          }}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
+        {/* Lista de Casos */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Caso</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Tipo</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fase</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Responsável</th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Valor</th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {casosFiltrados.map(caso => (
+                <tr key={caso.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div>
+                      <div className="font-medium text-gray-900">{caso.titulo}</div>
+                      <div className="text-xs text-gray-500">{caso.numero}</div>
                     </div>
-
-                    {/* tags de área jurídica */}
-                    {caso.area_juridica && caso.area_juridica.length > 0 && (
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
-                        {caso.area_juridica.map((area: string) => (
-                          <Badge key={area} variant="outline" className="text-xs">
-                            {area}
-                          </Badge>
-                        ))}
-                        {caso.portal_cliente_habilitado && (
-                          <Badge className="text-xs bg-primary/20 text-primary">
-                            portal ativo
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card className="p-12">
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                    <Scale className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-normal mb-2">
-                    {casos.length === 0 ? 'nenhum caso cadastrado' : 'nenhum caso encontrado'}
-                  </h3>
-                  <p className="text-muted-foreground text-sm max-w-md">
-                    {casos.length === 0 
-                      ? 'clique em "novo caso" para começar'
-                      : 'não há casos correspondentes aos filtros selecionados'
-                    }
-                  </p>
-                  {casos.length === 0 && (
-                    <Button 
-                      className="mt-4" 
-                      size="sm"
-                      onClick={() => setShowNovoCaso(true)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{caso.tipo}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[caso.status]}`}>
+                      {caso.status.charAt(0).toUpperCase() + caso.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${faseColors[caso.fase]}`}>
+                      {caso.fase.charAt(0).toUpperCase() + caso.fase.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{caso.responsavel}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                    {caso.valor > 0 ? `R$ ${(caso.valor / 1000).toFixed(0)}k` : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link 
+                      href={`/casos/${caso.id}`}
+                      className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-200 transition"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      criar primeiro caso
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            )}
-          </div>
-        </>
-      )}
+                      Ver Detalhes
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   )
 }
