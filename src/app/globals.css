@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
-/* CSS Variables for theming */
 :root {
-  /* Tema Obsidian (Dark Premium) - Padrão */
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --card: 240 10% 5.9%;
-  --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --primary: 239 84% 67%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --ring: 239 84% 67%;
+  /* Tema Claro - Padrão */
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 221 83% 53%;
   --radius: 0.5rem;
+  
+  /* Cores de status */
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --error: 0 84% 60%;
   
   /* Fases do fluxo */
   --fase-captacao: 217 91% 60%;
@@ -30,37 +34,8 @@
   --fase-analise: 191 91% 37%;
   --fase-acao: 38 92% 50%;
   --fase-registro: 142 71% 45%;
-  
-  /* Risco */
-  --risco-baixo: 142 71% 45%;
-  --risco-medio: 38 92% 50%;
-  --risco-alto: 0 84% 60%;
-  --risco-critico: 0 72% 51%;
 }
 
-.light {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --primary: 239 84% 67%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --ring: 239 84% 67%;
-}
-
-/* Tailwind v4 @theme for custom colors */
 @theme {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -83,7 +58,6 @@
   --color-ring: hsl(var(--ring));
 }
 
-/* Base styles */
 * {
   border-color: hsl(var(--border));
 }
@@ -91,89 +65,14 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "rlig" 1, "calt" 1;
-  font-weight: 200;
 }
 
-/* Títulos sempre lowercase */
-h1, h2, h3, h4, h5, h6 {
-  text-transform: lowercase;
-  font-weight: 400;
-}
-
-/* Botões e badges com peso 400 */
-button, [role="button"], .badge {
-  font-weight: 400;
-}
-
-/* Scrollbar customizada para tema obsidian */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.2);
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* Utilitários customizados */
-.text-balance {
-  text-wrap: balance;
-}
-
-.animate-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Gradiente sutil para cards */
-.card-gradient {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--card)) 0%,
-    hsl(var(--card) / 0.8) 100%
-  );
-}
-
-/* Glow effect para elementos importantes */
-.glow {
-  box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
-}
-
-/* Status colors como classes */
-.status-baixo { color: #22c55e; }
-.status-medio { color: #f59e0b; }
-.status-alto { color: #ef4444; }
-.status-critico { color: #dc2626; }
-
-/* Keyframes */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(10px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
+/* Status colors */
+.text-success { color: hsl(var(--success)); }
+.text-warning { color: hsl(var(--warning)); }
+.text-error { color: hsl(var(--error)); }
+.bg-success { background-color: hsl(var(--success)); }
+.bg-warning { background-color: hsl(var(--warning)); }
+.bg-error { background-color: hsl(var(--error)); }
