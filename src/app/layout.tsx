@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "justinianus.ai - legal case management",
-  description: "Sistema inteligente de gestão de casos jurídicos com IA",
+  title: "Justinianus.AI - Gestão Jurídica Inteligente",
+  description: "Sistema de gestão de casos jurídicos com IA",
 };
 
 export default function RootLayout({
@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
-      <body className="font-sans antialiased bg-background text-foreground">
+    <html lang="pt-BR">
+      <body className="font-sans antialiased bg-gray-50 text-gray-900 min-h-screen">
         {children}
       </body>
     </html>
